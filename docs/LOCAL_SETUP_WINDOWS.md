@@ -1,5 +1,9 @@
 # Local setup — Windows
 
+Run the desktop app here rather than inside WSL2: WSLg exposes the Windows microphone but no
+monitor of Windows playback, so a call's far end is unreachable from the VM. See
+[LOCAL_SETUP_WSL.md](LOCAL_SETUP_WSL.md) for the CLI under WSL2.
+
 ## 1. Ollama
 
 Install [OllamaSetup.exe](https://ollama.com/download). Requires Windows 10 22H2+.

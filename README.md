@@ -72,6 +72,16 @@ note-taker meet --language en
 # Ctrl+C to stop → generates notes via Ollama
 ```
 
+Transcript only, with no LLM in the loop at all:
+
+```bash
+note-taker meet --language en --transcript-only
+note-taker health --transcript-only          # checks the ASR endpoint, not Ollama
+```
+
+Every run writes `.meetings/<id>/transcript.txt` (`[mm:ss] text` per sentence) and
+`transcript.json` (segment ids and millisecond timings), continuously rather than at exit.
+
 ### Run Meetily (after Node/pnpm)
 
 ```bash
@@ -86,6 +96,7 @@ pnpm run tauri:dev
 - [docs/PRIVACY_MODEL.md](docs/PRIVACY_MODEL.md) — exact privacy guarantee
 - [docs/LOCAL_SETUP_MACOS.md](docs/LOCAL_SETUP_MACOS.md)
 - [docs/LOCAL_SETUP_WINDOWS.md](docs/LOCAL_SETUP_WINDOWS.md)
+- [docs/LOCAL_SETUP_WSL.md](docs/LOCAL_SETUP_WSL.md) — CLI under WSL2, and why the app belongs on Windows itself
 - [docs/ASR_PROTOCOL.md](docs/ASR_PROTOCOL.md)
 - [docs/MEETILY_WLK_INTEGRATION.md](docs/MEETILY_WLK_INTEGRATION.md) — desktop-app wiring plan and toolchain
 
@@ -96,6 +107,8 @@ pnpm run tauri:dev
 | WhisperLiveKit venv | Installed |
 | Ollama API (existing) | Detected at `127.0.0.1:11434` |
 | Python memory-only CLI | Working end to end |
-| Meetily WhisperLiveKit client | Written and unit-tested; not yet wired into the pipeline |
+| Meetily WhisperLiveKit client | Wired into the recording pipeline, selectable in Settings, verified in the UI |
+| Meetily structured notes | Ollama provider generates schema notes with evidence ids and resolved due dates |
+| Meetily llama-helper sidecar | Removed; stored `builtin-ai` configs migrate to Ollama |
 | Meetily memory-only fork | `auto_save` default → false, on branch `memory-only` |
 | Meetily Rust build | Compiles and tests without Xcode (`core-audio-tap` feature off) |

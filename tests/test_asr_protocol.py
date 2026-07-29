@@ -1,7 +1,7 @@
 from itertools import pairwise
 
 from note_taker.asr import parse_asr_message, parse_wlk_time
-from note_taker.meeting import TranscriptArchive
+from note_taker.meeting import TranscriptArchive, render_transcript_text
 
 
 def test_parse_wlk_time_string():
@@ -195,4 +195,17 @@ def test_new_utterance_gets_new_segment():
     assert len(archive.segments) == 2
     assert events[0][0] == "new"
     assert archive.segments[1]["id"] == "seg-00003456-00"
+
+
+def test_render_transcript_text_stamps_each_segment():
+    text = render_transcript_text(
+        [
+            {"start_ms": 0, "text": "Hello there."},
+            {"start_ms": 62_500, "text": "Okay, very good."},
+            {"start_ms": 3_723_000, "text": "Long meeting."},
+        ]
+    )
+    assert text == (
+        "[00:00] Hello there.\n[01:02] Okay, very good.\n[1:02:03] Long meeting.\n"
+    )
 

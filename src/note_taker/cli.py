@@ -2,15 +2,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
-import signal
 import sys
-from datetime import datetime, timezone
-from pathlib import Path
 
 from note_taker.meeting import run_meeting
-from note_taker.notes import generate_notes
-from note_taker.paths import meetings_dir
 
 
 def main() -> None:
@@ -28,15 +22,30 @@ def main() -> None:
     meet.add_argument("--sample-rate", type=int, default=16000)
     meet.add_argument("--ring-seconds", type=float, default=45.0)
     meet.add_argument("--title", default=None)
+    meet.add_argument(
+        "--transcript-only",
+        action="store_true",
+        help="Transcribe only; skip note generation so Ollama is not needed",
+    )
 
     health = sub.add_parser("health", help="Check ASR and Ollama loopback endpoints")
     health.add_argument("--asr-http", default="http://127.0.0.1:8000")
     health.add_argument("--ollama-url", default="http://127.0.0.1:11434")
+    health.add_argument(
+        "--transcript-only",
+        action="store_true",
+        help="Check the ASR endpoint only",
+    )
 
     args = parser.parse_args()
 
     if args.command == "health":
-        asyncio.run(_health(args.asr_http, args.ollama_url))
+        asyncio.run(
+            _health(
+                args.asr_http,
+                None if args.transcript_only else args.ollama_url,
+            )
+        )
         return
 
     if args.command == "meet":
@@ -49,19 +58,21 @@ def main() -> None:
                 sample_rate=args.sample_rate,
                 ring_seconds=args.ring_seconds,
                 title=args.title,
+                make_notes=not args.transcript_only,
             )
         )
 
 
-async def _health(asr_http: str, ollama_url: str) -> None:
+async def _health(asr_http: str, ollama_url: str | None) -> None:
     import httpx
+
+    checks = [("WhisperLiveKit", f"{asr_http.rstrip('/')}/health")]
+    if ollama_url:
+        checks.append(("Ollama", f"{ollama_url.rstrip('/')}/api/tags"))
 
     failed = False
     async with httpx.AsyncClient(timeout=5.0) as client:
-        for name, url in (
-            ("WhisperLiveKit", f"{asr_http.rstrip('/')}/health"),
-            ("Ollama", f"{ollama_url.rstrip('/')}/api/tags"),
-        ):
+        for name, url in checks:
             try:
                 r = await client.get(url)
                 print(f"{name}: OK ({r.status_code}) {url}")

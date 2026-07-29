@@ -31,6 +31,19 @@ def split_sentences(text: str) -> list[str]:
     return [part for part in _SENTENCE_BOUNDARY.split(text.strip()) if part]
 
 
+def _stamp(ms: int) -> str:
+    hours, rem = divmod(max(0, ms) // 1000, 3600)
+    minutes, seconds = divmod(rem, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes:02d}:{seconds:02d}"
+
+
+def render_transcript_text(segments: list[dict]) -> str:
+    """Readable transcript, for when the transcript itself is the deliverable."""
+    return "".join(f"[{_stamp(seg['start_ms'])}] {seg['text']}\n" for seg in segments)
+
+
 class TranscriptArchive:
     """WLK server-window + upserting archive (one segment per sentence)."""
 
@@ -178,6 +191,7 @@ async def run_meeting(
     sample_rate: int = 16000,
     ring_seconds: float = 45.0,
     title: str | None = None,
+    make_notes: bool = True,
 ) -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -189,11 +203,13 @@ async def run_meeting(
     meeting_path = meetings_dir() / meeting_id
     meeting_path.mkdir(parents=True, exist_ok=True)
     transcript_path = meeting_path / "transcript.json"
+    transcript_text_path = meeting_path / "transcript.txt"
 
+    stop_hint = "stop and generate notes" if make_notes else "stop"
     print(
         "Audio in memory only — no audio file is being created.\n"
         f"Meeting id: {meeting_id}\n"
-        "Speak into the microphone. Press Ctrl+C to stop and generate notes.\n"
+        f"Speak into the microphone. Press Ctrl+C to {stop_hint}.\n"
     )
 
     capacity = int(sample_rate * ring_seconds)
@@ -235,6 +251,10 @@ async def run_meeting(
         transcript_path.write_text(
             json.dumps(archive.segments, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
+        )
+        # Written continuously so a hard kill still leaves a usable transcript.
+        transcript_text_path.write_text(
+            render_transcript_text(archive.segments), encoding="utf-8"
         )
 
     async def sender() -> None:
@@ -357,10 +377,16 @@ async def run_meeting(
     )
 
     if not archive.segments:
-        print("No committed transcript segments; skipping note generation.")
+        print("No committed transcript segments.")
         print(
             "Tip: speak a full sentence and pause briefly so Whisper can commit a line."
         )
+        return
+
+    if not make_notes:
+        print(f"\nTranscript: {transcript_text_path}")
+        print(f"Segments:   {transcript_path} ({len(archive.segments)})")
+        print("PCM buffers wiped — no audio file was created.")
         return
 
     print(f"Generating notes with Ollama model {ollama_model!r}…")
@@ -373,7 +399,7 @@ async def run_meeting(
         )
     except Exception as exc:  # noqa: BLE001
         print(f"Note generation failed: {exc}", file=sys.stderr)
-        print(f"Transcript saved at {transcript_path}")
+        print(f"Transcript saved at {transcript_text_path}")
         return
 
     notes_path = meeting_path / "notes.json"
