@@ -14,7 +14,7 @@
 ## 1. Project Python env (already created)
 
 ```bash
-cd /Users/senoni/noni/note_taker
+cd note-taker
 source .venv/bin/activate
 wlk --version
 wlk check

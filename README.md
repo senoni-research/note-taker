@@ -1,4 +1,4 @@
-# note_taker
+# note-taker
 
 Local meeting notetaker: **audio stays in RAM**, only transcript text and generated notes are stored.
 

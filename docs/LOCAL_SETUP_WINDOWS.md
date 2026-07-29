@@ -19,7 +19,7 @@ Models live under `%HOMEPATH%\.ollama` (override with `OLLAMA_MODELS`).
 ## 2. WhisperLiveKit with uv
 
 ```powershell
-cd note_taker
+cd note-taker
 uv venv .venv --python 3.12
 .\.venv\Scripts\Activate.ps1
 uv pip install -e .

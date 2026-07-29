@@ -32,7 +32,7 @@ package is needed (`apt install python3.12` does not exist before Ubuntu 24.04 a
 ## 2. Python env
 
 ```bash
-cd note_taker
+cd note-taker
 uv venv .venv --python 3.12
 source .venv/bin/activate
 uv pip install -e .
