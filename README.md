@@ -98,4 +98,4 @@ pnpm run tauri:dev
 | Python memory-only CLI | Working end to end |
 | Meetily WhisperLiveKit client | Written and unit-tested; not yet wired into the pipeline |
 | Meetily memory-only fork | `auto_save` default → false, on branch `memory-only` |
-| Meetily Rust build | **Blocked — `cidre` needs full Xcode** (see integration doc) |
+| Meetily Rust build | Compiles and tests without Xcode (`core-audio-tap` feature off) |
