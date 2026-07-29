@@ -9,6 +9,7 @@ from note_taker.notes import (
     MeetingNotes,
     OpenQuestion,
     _apply_due_dates,
+    _prune_unsupported,
     _relocate_non_iso_due_dates,
     _validate_evidence,
     resolve_due_date,
@@ -80,11 +81,57 @@ def test_non_iso_due_date_is_relocated_then_resolved():
         executive_summary="S",
         action_items=[ActionItem(**data["action_items"][0])],
     )
-    _apply_due_dates(notes, WEDNESDAY)
+    _apply_due_dates(notes, WEDNESDAY, {})
 
     item = notes.action_items[0]
     assert item.due_date_raw == "Friday"
     assert item.due_date == "2026-07-31"
+
+
+def test_due_date_recovered_from_cited_evidence():
+    notes = MeetingNotes(
+        title="T",
+        executive_summary="S",
+        action_items=[
+            ActionItem(
+                task="Prepare the pilot test set",
+                owner="Philippe",
+                due_date_raw=None,
+                due_date=None,
+                evidence_segment_ids=["seg-a", "seg-b"],
+            )
+        ],
+    )
+    texts = {
+        "seg-a": "Action item for Philippe.",
+        "seg-b": "Prepare the pilot test set by Friday.",
+    }
+
+    _apply_due_dates(notes, WEDNESDAY, texts)
+
+    assert notes.action_items[0].due_date_raw == "Friday"
+    assert notes.action_items[0].due_date == "2026-07-31"
+
+
+def test_incidental_date_word_is_not_a_deadline():
+    notes = MeetingNotes(
+        title="T",
+        executive_summary="S",
+        action_items=[
+            ActionItem(
+                task="Test transcription",
+                owner=None,
+                due_date_raw=None,
+                due_date=None,
+                evidence_segment_ids=["seg-a"],
+            )
+        ],
+    )
+    texts = {"seg-a": "Today we are testing local transcription on Monday's build."}
+
+    _apply_due_dates(notes, WEDNESDAY, texts)
+
+    assert notes.action_items[0].due_date is None
 
 
 def test_unresolvable_due_date_stays_null():
@@ -101,8 +148,39 @@ def test_unresolvable_due_date_stays_null():
             )
         ],
     )
-    _apply_due_dates(notes, WEDNESDAY)
+    _apply_due_dates(notes, WEDNESDAY, {})
     assert notes.action_items[0].due_date is None
+
+
+def test_prune_keeps_only_evidence_backed_decisions_and_questions():
+    texts = {
+        "seg-a": "Our first decision is to keep all captured sound in memory only.",
+        "seg-b": "Transcript text and meeting notes may be on disk.",
+        "seg-c": "Should audio and the microphone run as two streams or one?",
+        "seg-d": "If the weather stays this hot, we should go swimming.",
+        "seg-e": "We still need to decide how long the ring buffer should be.",
+    }
+    notes = MeetingNotes(
+        title="T",
+        executive_summary="S",
+        decisions=[
+            Decision(decision="Keep audio in memory only.", evidence_segment_ids=["seg-a"]),
+            Decision(decision="Notes may be on disk.", evidence_segment_ids=["seg-b"]),
+        ],
+        open_questions=[
+            OpenQuestion(question="One stream or two?", evidence_segment_ids=["seg-c"]),
+            OpenQuestion(question="Go swimming?", evidence_segment_ids=["seg-d"]),
+            OpenQuestion(question="Ring buffer length?", evidence_segment_ids=["seg-e"]),
+        ],
+    )
+
+    _prune_unsupported(notes, texts)
+
+    assert [d.decision for d in notes.decisions] == ["Keep audio in memory only."]
+    assert [q.question for q in notes.open_questions] == [
+        "One stream or two?",
+        "Ring buffer length?",
+    ]
 
 
 def test_nested_notes_reject_unknown_evidence():

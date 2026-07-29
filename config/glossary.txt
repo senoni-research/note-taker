@@ -1,0 +1,6 @@
+Philippe and Jerome review the truth set and the exemplar before we freeze it.
+We keep captured audio in memory only and it is never stored on disk.
+WhisperLiveKit streams PCM over loopback, and Ollama writes the meeting notes.
+We are still comparing dual source and mixed efficient capture: system audio and
+the microphone as two separate streams, or as a single mixed stream.
+Decisions and action items come out of our weekly meetings.

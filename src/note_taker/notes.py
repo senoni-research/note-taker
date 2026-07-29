@@ -218,10 +218,69 @@ def resolve_due_date(raw: str | None, meeting_date: date) -> str | None:
     return None
 
 
-def _apply_due_dates(notes: MeetingNotes, meeting_date: date) -> None:
+# A 4B model flips between calling a stray remark an open question and calling a
+# description a decision, whatever the prompt says. These markers check the cited
+# evidence instead, so both sections stay trustworthy; anything dropped is still
+# covered by the summary and topics.
+_DECISION_MARKERS = re.compile(
+    r"\b(decid\w+|decision|agreed|we will|we'll|let's|going to|settled on)\b",
+    re.IGNORECASE,
+)
+_UNRESOLVED_MARKERS = re.compile(
+    r"\b(open question|unresolved|undecided|to be decided|tbd"
+    r"|still (?:need|have) to (?:decide|choose|figure)|need to decide)\b",
+    re.IGNORECASE,
+)
+
+
+def _prune_unsupported(notes: MeetingNotes, texts: dict[str, str]) -> None:
+    """Drop decisions and questions their own evidence does not support."""
+
+    def evidence(item: Any) -> str:
+        return " ".join(texts.get(eid, "") for eid in item.evidence_segment_ids)
+
+    kept_decisions = []
+    for item in notes.decisions:
+        if _DECISION_MARKERS.search(evidence(item)):
+            kept_decisions.append(item)
+        else:
+            log.info("Dropping unsupported decision: %s", item.decision)
+    notes.decisions = kept_decisions
+
+    kept_questions = []
+    for item in notes.open_questions:
+        cited = evidence(item)
+        if "?" in cited or _UNRESOLVED_MARKERS.search(cited):
+            kept_questions.append(item)
+        else:
+            log.info("Dropping unsupported open question: %s", item.question)
+    notes.open_questions = kept_questions
+
+
+# Requiring a deadline preposition keeps the fallback from reading a due date out
+# of an incidental "today we are testing".
+_DEADLINE_PHRASE = re.compile(
+    r"\b(?:by|before|due(?:\s+on)?|until|no later than)\s+"
+    rf"(\d{{4}}-\d{{2}}-\d{{2}}|today|tomorrow|{'|'.join(_WEEKDAYS)})\b",
+    re.IGNORECASE,
+)
+
+
+def _apply_due_dates(
+    notes: MeetingNotes, meeting_date: date, texts: dict[str, str]
+) -> None:
     for item in notes.action_items:
         if item.due_date is None:
             item.due_date = resolve_due_date(item.due_date_raw, meeting_date)
+        if item.due_date is not None:
+            continue
+        # The model sometimes drops the deadline it clearly read: recover it from
+        # the evidence it cited, which keeps the date grounded in the transcript.
+        cited = " ".join(texts.get(eid, "") for eid in item.evidence_segment_ids)
+        phrase = _DEADLINE_PHRASE.search(cited)
+        if phrase:
+            item.due_date = resolve_due_date(phrase.group(1), meeting_date)
+            item.due_date_raw = item.due_date_raw or phrase.group(1)
 
 
 def _relocate_non_iso_due_dates(data: Any) -> Any:
@@ -240,19 +299,25 @@ def _relocate_non_iso_due_dates(data: Any) -> Any:
     return data
 
 
-SYSTEM_PROMPT = """Use only information in the supplied transcript.
-Never invent attendees, owners, dates, decisions or commitments.
-Use null when owner or due date was not explicitly stated.
-An unresolved alternative or question is not a decision. Put it only in open_questions.
-Only include an open question when the transcript explicitly asks it or says it
-is unresolved. Do not turn jokes, suggestions, or declarative statements into questions.
-Copy the transcript's own deadline wording verbatim into due_date_raw, for example
-"Friday" or "end of the month", and use null when no deadline was stated.
-Never compute a calendar date yourself: set due_date to null unless the transcript
-states a full date, because the application resolves due_date_raw.
-Every decision, action, topic, question and risk must cite one or more valid transcript segment IDs.
-Do not include model reasoning or chain-of-thought.
-Return only the required JSON object."""
+SYSTEM_PROMPT = """You write meeting notes from a transcript. Follow every rule.
+
+1. Use only what the transcript says. Never invent attendees, owners, dates,
+   decisions or commitments.
+2. Set owner to the person the transcript makes responsible, even when the name
+   is in the sentence before the task ("Action item for Philippe." then "Prepare
+   the pilot test set." means owner Philippe). Use null only when no name was
+   given at all.
+3. Cite the segment IDs you took each item from, including the segment holding
+   the owner and the one holding the deadline.
+4. A decision is a choice the group settled on ("we decided", "we agreed",
+   "we will"). A sentence that merely describes how something works is not a
+   decision; put it in a topic summary.
+5. An open question is one the transcript explicitly asks or calls unresolved.
+   Jokes, suggestions and plain statements are not open questions.
+6. If a deadline is spoken for an action ("by Friday", "tomorrow"), copy those
+   exact words into due_date_raw. Use null only when none was spoken.
+7. Always leave due_date null; the application computes it from due_date_raw.
+8. Return only the JSON object, with no reasoning."""
 
 
 async def generate_notes(
@@ -290,7 +355,9 @@ async def generate_notes(
     url = f"{ollama_url.rstrip('/')}/api/chat"
     async with httpx.AsyncClient(timeout=300.0) as client:
         notes = await _chat_validated(client, url, payload, valid_ids)
-    _apply_due_dates(notes, effective_date)
+    texts = {str(s["id"]): str(s["text"]) for s in segments}
+    _apply_due_dates(notes, effective_date, texts)
+    _prune_unsupported(notes, texts)
     return notes
 
 

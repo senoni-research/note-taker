@@ -1,5 +1,9 @@
-from note_taker.pcm_ring import SecurePcmRing
 from array import array
+
+import pytest
+
+from note_taker.endpoints import assert_loopback
+from note_taker.pcm_ring import SecurePcmRing
 
 
 def test_ring_capacity_bounded():
@@ -21,9 +25,6 @@ def test_ring_pop_and_clear_zeroises():
 
 
 def test_loopback_validator():
-    from note_taker.endpoints import assert_loopback
-    import pytest
-
     assert assert_loopback("http://127.0.0.1:8000/health").startswith("http://")
     with pytest.raises(ValueError):
         assert_loopback("http://example.com/api")

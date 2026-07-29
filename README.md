@@ -15,10 +15,13 @@ Meetily already solves mic + system-audio capture on macOS/Windows. This project
 
 A Python reference CLI under `src/note_taker/` proves the ASR + Ollama loop without the Tauri UI.
 
-Two behaviours are deliberately handled on the client rather than by a model:
+Some behaviours are deliberately handled on the client rather than by a model, because a 4B model is not consistent enough at them:
 
 - **Sentence segments** — WhisperLiveKit only breaks a line on VAD silence, so committed lines are split into one segment per sentence (see [docs/ASR_PROTOCOL.md](docs/ASR_PROTOCOL.md)).
-- **Deadlines** — the model copies the transcript's wording into `due_date_raw` (`"Friday"`), and `due_date` is resolved locally against the meeting date. Wording the resolver does not understand stays `null` instead of becoming an invented date.
+- **Deadlines** — the model copies the transcript's wording into `due_date_raw` (`"by Friday"`), and `due_date` is resolved locally against the meeting date. If the model drops the deadline, it is recovered from the evidence it cited, but only from a deadline phrase (`by`/`before`/`due`/`until`). Wording the resolver does not understand stays `null` rather than becoming an invented date.
+- **Evidence-backed decisions and questions** — a decision is kept only if its cited segments actually contain decision wording, and an open question only if they contain a question mark or an unresolved marker. Dropped items are logged and still covered by the summary and topics.
+
+Terminology that ASR tends to mangle (names, `truth set`, `single mixed stream`) lives in [config/glossary.txt](config/glossary.txt) and is passed to Whisper as a static init prompt.
 
 ## Quick start (macOS)
 
