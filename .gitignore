@@ -1,0 +1,30 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+.env
+*.wav
+*.mp3
+*.m4a
+*.mp4
+*.flac
+*.ogg
+*.pcm
+*.raw
+node_modules/
+.pnpm-store/
+dist/
+target/
+.meetings/
+data/
+*.sqlite
+*.sqlite3
+.specstory/
+
+# Upstream Meetily checkout keeps its own git history; fork work lives on its
+# memory-only branch inside meetily/.
+meetily/
