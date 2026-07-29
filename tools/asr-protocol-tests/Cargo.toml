@@ -1,0 +1,17 @@
+[package]
+name = "asr-protocol-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Test harness for the Meetily WhisperLiveKit client. It compiles the real
+# source file through #[path], so the protocol logic can be checked without the
+# Tauri dependency tree (cidre needs full Xcode, whisper-rs needs cmake).
+[dependencies]
+anyhow = "1.0"
+futures-util = "0.3"
+log = "0.4"
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.24"
+url = "2.5"

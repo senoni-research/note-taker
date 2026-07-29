@@ -87,6 +87,7 @@ pnpm run tauri:dev
 - [docs/LOCAL_SETUP_MACOS.md](docs/LOCAL_SETUP_MACOS.md)
 - [docs/LOCAL_SETUP_WINDOWS.md](docs/LOCAL_SETUP_WINDOWS.md)
 - [docs/ASR_PROTOCOL.md](docs/ASR_PROTOCOL.md)
+- [docs/MEETILY_WLK_INTEGRATION.md](docs/MEETILY_WLK_INTEGRATION.md) — desktop-app wiring plan and toolchain
 
 ## Status
 
@@ -94,6 +95,7 @@ pnpm run tauri:dev
 |---|---|
 | WhisperLiveKit venv | Installed |
 | Ollama API (existing) | Detected at `127.0.0.1:11434` |
-| Python memory-only CLI | In progress |
-| Meetily memory-only fork | Started (`auto_save` default → false) |
-| Node / pnpm / Tauri UI | **Blocked — install Node + pnpm** |
+| Python memory-only CLI | Working end to end |
+| Meetily WhisperLiveKit client | Written and unit-tested; not yet wired into the pipeline |
+| Meetily memory-only fork | `auto_save` default → false, on branch `memory-only` |
+| Meetily Rust build | **Blocked — `cidre` needs full Xcode** (see integration doc) |

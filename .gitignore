@@ -28,3 +28,6 @@ data/
 # Upstream Meetily checkout keeps its own git history; fork work lives on its
 # memory-only branch inside meetily/.
 meetily/
+
+# Rust build artefacts from the test harness
+tools/**/target/
