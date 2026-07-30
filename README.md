@@ -9,11 +9,11 @@ Local meeting notetaker: **audio stays in RAM**, only transcript text and genera
 | Desktop capture (target) | Fork of [Meetily](https://github.com/Zackriya-Solutions/meetily) (`meetily/`) |
 | Streaming ASR | [WhisperLiveKit](https://github.com/QuentinFuxa/WhisperLiveKit) on loopback |
 | Notes / actions | Local [Ollama](https://ollama.com) (or OpenAI-compatible local endpoint) |
-| Privacy model | Bounded PCM ring buffers; no audio files, checkpoints, or audio blobs |
+| Privacy model | Audio is transient; text is retained ([docs/PRIVACY_MODEL.md](docs/PRIVACY_MODEL.md)) |
 
-Meetily already solves mic + system-audio capture on macOS/Windows. This project converts it to a **memory-only** build and streams raw PCM to WhisperLiveKit instead of saving recordings.
+Meetily already solves mic + system-audio capture on macOS/Windows. This project converts it toward a **memory-only** build and streams raw PCM to WhisperLiveKit instead of saving recordings by default.
 
-A Python reference CLI under `src/note_taker/` proves the ASR + Ollama loop without the Tauri UI.
+A Python reference CLI under `src/note_taker/` proves the ASR + Ollama loop without the Tauri UI and is the path that currently meets the hard no-audio-file guarantee. The desktop fork integrates the same idea into Meetily’s capture pipeline; removing every alternative recording route is still in progress (see Status).
 
 Some behaviours are deliberately handled on the client rather than by a model, because a 4B model is not consistent enough at them:
 
@@ -106,9 +106,18 @@ pnpm run tauri:dev
 |---|---|
 | WhisperLiveKit venv | Installed |
 | Ollama API (existing) | Detected at `127.0.0.1:11434` |
-| Python memory-only CLI | Working end to end |
+| Python memory-only CLI | Working end to end — this is the path that has earned a hard “no audio file” claim |
 | Meetily WhisperLiveKit client | Wired into the recording pipeline, selectable in Settings, verified in the UI |
 | Meetily structured notes | Ollama provider generates schema notes with evidence ids and resolved due dates |
 | Meetily llama-helper sidecar | Removed; stored `builtin-ai` configs migrate to Ollama |
-| Meetily memory-only fork | `auto_save` default → false, on branch `memory-only` |
+| Meetily memory-only path | Working ASR integration; `auto_save` defaults to `false` on branch `memory-only` |
+| Meetily no-audio-at-rest hardening | **In progress** — alternative recording routes still exist in the tree (see [docs/AUDIO_STORAGE_AUDIT.md](docs/AUDIO_STORAGE_AUDIT.md)) |
 | Meetily Rust build | Compiles and tests without Xcode (`core-audio-tap` feature off) |
+
+The accurate desktop claim today is: **a working memory-only ASR path integrated into Meetily, with hard removal of all alternative recording paths still in progress.** The Python CLI is the reference implementation for the privacy model; the Meetily fork demonstrates the same architecture on a real capture pipeline but has not yet earned an absolute “no audio at rest” guarantee.
+
+## License
+
+[MIT](LICENSE) — Copyright (c) 2026 Senoni Research.
+
+The nested Meetily fork retains its upstream [MIT license](meetily/LICENSE.md) and Zackriya Solutions copyright.

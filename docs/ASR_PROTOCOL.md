@@ -1,5 +1,9 @@
 # WhisperLiveKit ASR protocol notes
 
+This document mixes **implemented behaviour** with a **target architecture**.
+See [Implementation status](#implementation-status) before treating every rule as
+shipping code.
+
 Default local server:
 
 ```bash
@@ -51,3 +55,23 @@ stores one segment per sentence, with id `seg-<line-start-centiseconds>-<index>`
 
 - **Stop:** drain bounded send queue → empty binary frame → wait for `ready_to_stop` (with timeout) → wipe PCM → keep committed text.
 - **Abort:** wipe pending PCM → close socket → persist no provisional text.
+
+## Implementation status
+
+| Rule / behaviour | Python CLI | Meetily Rust client |
+|---|---|---|
+| Loopback-only connect + require `--pcm-input` | Implemented | Implemented |
+| Binary PCM frames (16 kHz mono s16le) | Implemented | Implemented |
+| Diff / snapshot parse; archive committed lines | Implemented | Implemented |
+| Sentence-level upsert (`seg-<line-start-cs>-<index>`) | Implemented | Implemented |
+| Check `n_lines`; mark archive out-of-sync on mismatch | Implemented | Implemented |
+| Show / replace provisional buffer in the live UI | Implemented (terminal) | **Not forwarded** — `AsrEvent::Provisional` is dropped; UI updates come from committed/revised sentences only |
+| Parse `seq` from server messages | Parsed into `AsrUpdate` | **Not carried** on `AsrUpdate` |
+| Verify every `seq`; treat gaps as out-of-sync | **Specified, not implemented** | **Specified, not implemented** |
+| Reconnect + new ASR epoch + reconcile snapshot vs archive tail | Epoch field exists; full reconnect/reconcile **not implemented** | Out-of-sync flag only; reconnect/reconcile **not implemented** |
+| Segment identity = meeting + source + epoch + time + text hash | **Specified**; ids are line-start + sentence index today | Same as CLI (line-start + sentence index) |
+| Bounded PCM send queue on stop / abort wipe | Implemented (ring + wipe) | PCM path exists; desktop mixed-audio / event channels are still **unbounded** `mpsc` (separate hardening item) |
+
+When this document describes seq verification, epoch reconnect, or hash-based
+segment identity, that is the **target** protocol unless the table above marks
+it implemented.

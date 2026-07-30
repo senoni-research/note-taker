@@ -3,6 +3,7 @@ name = "note-taker"
 version = "0.1.0"
 description = "Memory-only local meeting notetaker (WhisperLiveKit + Ollama)"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "whisperlivekit>=0.2.24",
